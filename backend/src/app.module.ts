@@ -7,6 +7,7 @@ import { ActivityModule } from './activity/activity.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { CommentsModule } from './comments/comments.module.js';
 import { validateEnvironment } from './config/environment.validation.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { ProjectsModule } from './projects/projects.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -36,6 +37,7 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     TasksModule,
     CommentsModule,
     ActivityModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

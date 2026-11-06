@@ -161,16 +161,14 @@ export class ProjectsService {
     actorId: string,
     userId: string,
   ): Promise<void> {
-    const [actorMembership, targetMembership] = await Promise.all([
-      this.prisma.projectMember.findUnique({
-        where: { projectId_userId: { projectId, userId: actorId } },
-        select: { role: true },
-      }),
-      this.prisma.projectMember.findUnique({
-        where: { projectId_userId: { projectId, userId } },
-        select: { role: true, user: { select: { email: true } } },
-      }),
-    ]);
+    const actorMembership = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId: actorId } },
+      select: { role: true },
+    });
+    const targetMembership = await this.prisma.projectMember.findUnique({
+      where: { projectId_userId: { projectId, userId } },
+      select: { role: true, user: { select: { email: true } } },
+    });
 
     if (!actorMembership || !targetMembership) {
       throw new NotFoundException('Project member was not found');

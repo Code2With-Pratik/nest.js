@@ -140,6 +140,17 @@ describe('Tasks, comments, and activity (e2e)', () => {
       .expect(200);
     expect(updated.body.status).toBe('IN_PROGRESS');
 
+    const dashboard = await request(app.getHttpServer())
+      .get('/dashboard/summary')
+      .set('Authorization', `Bearer ${tokens.member}`)
+      .expect(200);
+    expect(dashboard.body.stats).toMatchObject({
+      totalProjects: 1,
+      totalTasks: 1,
+      inProgressTasks: 1,
+      completedTasks: 0,
+    });
+
     const comment = await request(app.getHttpServer())
       .post(`/tasks/${taskId}/comments`)
       .set('Authorization', `Bearer ${tokens.member}`)

@@ -67,6 +67,40 @@ secrets; supply distinct, randomly generated values of at least 32 characters.
 In production the refresh cookie is marked Secure. The browser must send
 credentialed requests to the configured API origin.
 
+## API modules
+
+| Module | Key endpoints |
+| --- | --- |
+| Users | `GET /users`, `GET /users/me`, `PATCH /users/me` |
+| Projects | `POST /projects`, `GET /projects`, project detail/update/delete, member management |
+| Tasks | `POST /tasks`, filtered/paginated `GET /tasks`, task detail/update/delete |
+| Comments | `POST/GET /tasks/:taskId/comments`, `DELETE /comments/:id` |
+| Activity | `GET /projects/:projectId/activities` |
+| Dashboard | `GET /dashboard/summary` |
+
+Every project or task query is scoped to the caller's project memberships.
+Project role guards protect owner/admin operations; task assignees must already
+be project members. Comments and project activities are persisted in
+PostgreSQL.
+
+## NestJS concepts in this backend
+
+- **Modules** group related controllers and providers; `AuthModule`,
+  `ProjectsModule`, `TasksModule`, and the other feature modules are composed
+  by `AppModule`.
+- **Controllers** declare HTTP routes and bind request DTOs; **services**
+  contain the business rules and Prisma queries.
+- **Dependency injection** supplies services such as `PrismaService` and
+  `ProjectAccessService` through each module's provider graph.
+- **DTOs and pipes** validate and transform input globally; unlisted fields are
+  rejected rather than silently accepted.
+- **Guards and decorators** authenticate bearer tokens and enforce project
+  membership/roles; `@CurrentUser()` exposes only the verified caller.
+- **Exception filters** return a consistent error envelope and keep internal
+  exception details out of HTTP responses.
+- **Prisma migrations** define relational constraints, indexes, and cascade
+  behavior; the API never accepts arbitrary database fields from clients.
+
 ## Run and verify
 
 ```powershell
