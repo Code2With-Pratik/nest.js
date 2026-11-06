@@ -27,6 +27,7 @@ interface AuthContextValue {
   signIn: (credentials: Credentials) => Promise<void>;
   signUp: (registration: Registration) => Promise<void>;
   signOut: () => Promise<void>;
+  updateUser: (user: User) => void;
   retrySession: () => Promise<void>;
 }
 
@@ -95,6 +96,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(null);
     setUser(null);
   }, []);
+  const updateUser = useCallback((updatedUser: User) => {
+    setUser(updatedUser);
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -104,6 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
+      updateUser,
       retrySession,
     }),
     [
@@ -113,6 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signIn,
       signUp,
       signOut,
+      updateUser,
       retrySession,
     ],
   );

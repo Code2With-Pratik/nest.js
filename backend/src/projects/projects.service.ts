@@ -141,6 +141,14 @@ export class ProjectsService {
             userId: actorId,
           },
         });
+        await transaction.notification.create({
+          data: {
+            title: 'Added to a project',
+            message: `${user.email} was added to a project.`,
+            type: 'PROJECT_INVITATION',
+            userId: user.id,
+          },
+        });
 
         return { ...membership, user };
       });

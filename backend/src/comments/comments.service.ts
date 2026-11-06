@@ -18,7 +18,13 @@ export class CommentsService {
   async create(taskId: string, userId: string, dto: CreateCommentDto) {
     const task = await this.prisma.task.findUnique({
       where: { id: taskId },
-      select: { id: true, projectId: true, title: true },
+      select: {
+        id: true,
+        projectId: true,
+        title: true,
+        assigneeId: true,
+        createdById: true,
+      },
     });
     if (!task) {
       throw new NotFoundException('Task was not found');
@@ -41,6 +47,23 @@ export class CommentsService {
           userId,
         },
       });
+
+      const recipients = new Set(
+        [task.assigneeId, task.createdById].filter(
+          (recipientId): recipientId is string =>
+            recipientId !== null && recipientId !== userId,
+        ),
+      );
+      if (recipients.size > 0) {
+        await transaction.notification.createMany({
+          data: Array.from(recipients, (recipientId) => ({
+            title: 'New task comment',
+            message: `${comment.user.name} commented on "${task.title}".`,
+            type: 'COMMENT_ADDED' as const,
+            userId: recipientId,
+          })),
+        });
+      }
 
       return comment;
     });

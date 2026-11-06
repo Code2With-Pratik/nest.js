@@ -28,6 +28,8 @@ describe('Tasks, comments, and activity (e2e)', () => {
     member: '',
     outsider: '',
   };
+  const authorization = (role: keyof typeof tokens) =>
+    `Bearer ${tokens[role]}`;
   let projectId = '';
   let taskId = '';
   let commentId = '';
@@ -130,6 +132,64 @@ describe('Tasks, comments, and activity (e2e)', () => {
         ).id,
       })
       .expect(400);
+
+    const memberNotifications = await request(app.getHttpServer())
+      .get('/notifications')
+      .set('Authorization', authorization('member'))
+      .expect(200);
+    expect(memberNotifications.body.unreadCount).toBe(2);
+    expect(
+      memberNotifications.body.data.map(
+        (notification: { type: string }) => notification.type,
+      ),
+    ).toEqual(expect.arrayContaining(['PROJECT_INVITATION', 'TASK_ASSIGNED']));
+
+    const ownerNotifications = await request(app.getHttpServer())
+      .get('/notifications')
+      .set('Authorization', authorization('owner'))
+      .expect(200);
+    expect(ownerNotifications.body.data).toHaveLength(0);
+  });
+
+  it('scopes notification reads to the authenticated user', async () => {
+    const memberNotifications = await request(app.getHttpServer())
+      .get('/notifications')
+      .set('Authorization', authorization('member'))
+      .expect(200);
+    const assignment = memberNotifications.body.data.find(
+      (notification: { type: string }) => notification.type === 'TASK_ASSIGNED',
+    ) as { id: string };
+
+    await request(app.getHttpServer())
+      .patch(`/notifications/${assignment.id}/read`)
+      .set('Authorization', authorization('owner'))
+      .expect(404);
+
+    await request(app.getHttpServer())
+      .patch(`/notifications/${assignment.id}/read`)
+      .set('Authorization', authorization('member'))
+      .expect(204);
+
+    const updated = await request(app.getHttpServer())
+      .get('/notifications')
+      .set('Authorization', authorization('member'))
+      .expect(200);
+    expect(updated.body.unreadCount).toBe(1);
+    expect(
+      updated.body.data.find(
+        (notification: { id: string }) => notification.id === assignment.id,
+      ).isRead,
+    ).toBe(true);
+
+    await request(app.getHttpServer())
+      .patch('/notifications/read-all')
+      .set('Authorization', authorization('member'))
+      .expect(204);
+    const allRead = await request(app.getHttpServer())
+      .get('/notifications')
+      .set('Authorization', authorization('member'))
+      .expect(200);
+    expect(allRead.body.unreadCount).toBe(0);
   });
 
   it('updates task status and records comments and project activity', async () => {
@@ -165,6 +225,18 @@ describe('Tasks, comments, and activity (e2e)', () => {
     expect(comments.body).toHaveLength(1);
     expect(comments.body[0].content).toBe('I am working on this checklist.');
     expect(comments.body[0].user).not.toHaveProperty('passwordHash');
+
+    const memberNotifications = await request(app.getHttpServer())
+      .get('/notifications')
+      .set('Authorization', authorization('member'))
+      .expect(200);
+    expect(
+      memberNotifications.body.data.map(
+        (notification: { type: string }) => notification.type,
+      ),
+    ).toEqual(
+      expect.arrayContaining(['TASK_STATUS_UPDATED', 'COMMENT_ADDED']),
+    );
 
     const activity = await request(app.getHttpServer())
       .get(`/projects/${projectId}/activities`)

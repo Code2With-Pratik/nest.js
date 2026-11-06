@@ -4,12 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Bell, Menu, Moon, Sun, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Button } from "@/components/ui/button";
 import { initials } from "@/lib/format";
 import { useAuth } from "@/app/auth-provider";
 import { useTheme } from "@/app/theme-provider";
 import { getErrorMessage } from "@/lib/api";
+import { apiFetch } from "@/lib/api";
+import type { NotificationList } from "@/types/api";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Overview",
@@ -28,6 +31,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [signOutError, setSignOutError] = useState<string | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const { data: notifications } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => apiFetch<NotificationList>("/notifications"),
+    refetchInterval: 60_000,
+  });
   const title =
     pageTitles[pathname] ??
     (pathname.includes("/board") ? "Project board" : "Project");
@@ -102,10 +110,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Button>
             <Link
               href="/notifications"
-              className="grid size-10 place-items-center rounded-xl text-muted transition-colors hover:bg-surface-secondary hover:text-foreground"
-              aria-label="Notifications"
+              className="relative grid size-10 place-items-center rounded-xl text-muted transition-colors hover:bg-surface-secondary hover:text-foreground"
+              aria-label={
+                notifications?.unreadCount
+                  ? `Notifications, ${notifications.unreadCount} unread`
+                  : "Notifications"
+              }
             >
               <Bell size={18} strokeWidth={1.8} />
+              {notifications?.unreadCount ? (
+                <span className="absolute right-2 top-2 size-2 rounded-full border-2 border-surface bg-brand" />
+              ) : null}
             </Link>
 
             <details className="group relative ml-1">

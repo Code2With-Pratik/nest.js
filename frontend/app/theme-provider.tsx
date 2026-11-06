@@ -41,7 +41,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const theme = useSyncExternalStore(
     subscribeToTheme,
     getThemeSnapshot,
-    () => "light",
+    (): Theme => "light",
   );
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

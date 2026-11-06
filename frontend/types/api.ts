@@ -83,6 +83,11 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface NotificationList {
+  data: Notification[];
+  unreadCount: number;
+}
+
 export interface DashboardSummary {
   stats: {
     totalProjects: number;

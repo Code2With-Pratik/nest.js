@@ -54,6 +54,17 @@ export class TasksService {
         },
       });
 
+      if (task.assigneeId && task.assigneeId !== userId) {
+        await transaction.notification.create({
+          data: {
+            title: 'You were assigned a task',
+            message: `You were assigned "${task.title}" in ${task.project.name}.`,
+            type: 'TASK_ASSIGNED',
+            userId: task.assigneeId,
+          },
+        });
+      }
+
       return task;
     });
   }
@@ -112,7 +123,13 @@ export class TasksService {
   async update(id: string, userId: string, dto: UpdateTaskDto) {
     const existing = await this.prisma.task.findUnique({
       where: { id },
-      select: { id: true, projectId: true, status: true, title: true },
+      select: {
+        id: true,
+        projectId: true,
+        status: true,
+        title: true,
+        assigneeId: true,
+      },
     });
     if (!existing) {
       throw new NotFoundException('Task was not found');
@@ -158,6 +175,41 @@ export class TasksService {
           userId,
         },
       });
+
+      const notifications: Array<{
+        title: string;
+        message: string;
+        type: 'TASK_ASSIGNED' | 'TASK_STATUS_UPDATED';
+        userId: string;
+      }> = [];
+      if (
+        dto.assigneeId &&
+        dto.assigneeId !== existing.assigneeId &&
+        dto.assigneeId !== userId
+      ) {
+        notifications.push({
+          title: 'You were assigned a task',
+          message: `You were assigned "${task.title}" in ${task.project.name}.`,
+          type: 'TASK_ASSIGNED',
+          userId: dto.assigneeId,
+        });
+      }
+      if (
+        dto.status !== undefined &&
+        dto.status !== existing.status &&
+        task.assigneeId &&
+        task.assigneeId !== userId
+      ) {
+        notifications.push({
+          title: 'Task status updated',
+          message: `"${task.title}" is now ${task.status.replace('_', ' ').toLowerCase()}.`,
+          type: 'TASK_STATUS_UPDATED',
+          userId: task.assigneeId,
+        });
+      }
+      if (notifications.length > 0) {
+        await transaction.notification.createMany({ data: notifications });
+      }
 
       return task;
     });
