@@ -6,6 +6,7 @@ import {
 import { ProjectRole } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectAccessService } from '../projects/project-access.service.js';
+import { NotificationsGateway } from '../notifications/notifications.gateway.js';
 import type { CreateCommentDto } from './dto/create-comment.dto.js';
 
 @Injectable()
@@ -13,6 +14,7 @@ export class CommentsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly projectAccess: ProjectAccessService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   async create(taskId: string, userId: string, dto: CreateCommentDto) {
@@ -31,7 +33,7 @@ export class CommentsService {
     }
 
     await this.projectAccess.requireMembership(task.projectId, userId);
-    return this.prisma.$transaction(async (transaction) => {
+    const result = await this.prisma.$transaction(async (transaction) => {
       const comment = await transaction.comment.create({
         data: { taskId, userId, content: dto.content.trim() },
         include: {
@@ -65,8 +67,12 @@ export class CommentsService {
         });
       }
 
-      return comment;
+      return { comment, notifiedUserIds: Array.from(recipients) };
     });
+    for (const recipientId of result.notifiedUserIds) {
+      this.notificationsGateway.emitNewNotification(recipientId);
+    }
+    return result.comment;
   }
 
   async findAll(taskId: string, userId: string) {

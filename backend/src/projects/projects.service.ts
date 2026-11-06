@@ -8,13 +8,17 @@ import {
 import { Prisma } from '../generated/prisma/client.js';
 import { ProjectRole } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { NotificationsGateway } from '../notifications/notifications.gateway.js';
 import type { AddProjectMemberDto } from './dto/add-project-member.dto.js';
 import type { CreateProjectDto } from './dto/create-project.dto.js';
 import type { UpdateProjectDto } from './dto/update-project.dto.js';
 
 @Injectable()
 export class ProjectsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notificationsGateway: NotificationsGateway,
+  ) {}
 
   create(ownerId: string, dto: CreateProjectDto) {
     return this.prisma.project.create({
@@ -123,7 +127,7 @@ export class ProjectsService {
     }
 
     try {
-      return await this.prisma.$transaction(async (transaction) => {
+      const membership = await this.prisma.$transaction(async (transaction) => {
         const membership = await transaction.projectMember.create({
           data: {
             projectId,
@@ -152,6 +156,8 @@ export class ProjectsService {
 
         return { ...membership, user };
       });
+      this.notificationsGateway.emitNewNotification(user.id);
+      return membership;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

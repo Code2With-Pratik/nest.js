@@ -5,7 +5,9 @@ export type NotificationType =
   | "TASK_ASSIGNED"
   | "TASK_STATUS_UPDATED"
   | "COMMENT_ADDED"
-  | "PROJECT_INVITATION";
+  | "PROJECT_INVITATION"
+  | "TASK_DUE_SOON"
+  | "TASK_OVERDUE";
 
 export interface User {
   id: string;

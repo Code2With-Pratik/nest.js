@@ -30,6 +30,8 @@ enum NotificationType {
   TASK_STATUS_UPDATED
   COMMENT_ADDED
   PROJECT_INVITATION
+  TASK_DUE_SOON
+  TASK_OVERDUE
 }
 
 model User {

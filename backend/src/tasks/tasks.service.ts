@@ -8,6 +8,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { ProjectRole } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ProjectAccessService } from '../projects/project-access.service.js';
+import { NotificationsGateway } from '../notifications/notifications.gateway.js';
 import type { CreateTaskDto } from './dto/create-task.dto.js';
 import type { FindTasksDto } from './dto/find-tasks.dto.js';
 import type { UpdateTaskDto } from './dto/update-task.dto.js';
@@ -24,13 +25,14 @@ export class TasksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly projectAccess: ProjectAccessService,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   async create(userId: string, dto: CreateTaskDto) {
     await this.projectAccess.requireMembership(dto.projectId, userId);
     await this.assertAssigneeIsMember(dto.projectId, dto.assigneeId);
 
-    return this.prisma.$transaction(async (transaction) => {
+    const task = await this.prisma.$transaction(async (transaction) => {
       const task = await transaction.task.create({
         data: {
           projectId: dto.projectId,
@@ -67,6 +69,10 @@ export class TasksService {
 
       return task;
     });
+    if (task.assigneeId && task.assigneeId !== userId) {
+      this.notificationsGateway.emitNewNotification(task.assigneeId);
+    }
+    return task;
   }
 
   async findAll(userId: string, filters: FindTasksDto) {
@@ -129,6 +135,7 @@ export class TasksService {
         status: true,
         title: true,
         assigneeId: true,
+        createdById: true,
       },
     });
     if (!existing) {
@@ -151,7 +158,7 @@ export class TasksService {
       ...(dto.dueDate === undefined ? {} : { dueDate: dto.dueDate }),
     };
 
-    return this.prisma.$transaction(async (transaction) => {
+    const result = await this.prisma.$transaction(async (transaction) => {
       const task = await transaction.task.update({
         where: { id },
         data,
@@ -196,23 +203,38 @@ export class TasksService {
       }
       if (
         dto.status !== undefined &&
-        dto.status !== existing.status &&
-        task.assigneeId &&
-        task.assigneeId !== userId
+        dto.status !== existing.status
       ) {
-        notifications.push({
-          title: 'Task status updated',
-          message: `"${task.title}" is now ${task.status.replace('_', ' ').toLowerCase()}.`,
-          type: 'TASK_STATUS_UPDATED',
-          userId: task.assigneeId,
-        });
+        const recipients = new Set(
+          [task.assigneeId, existing.createdById].filter(
+            (recipientId): recipientId is string =>
+              recipientId !== null && recipientId !== userId,
+          ),
+        );
+        for (const recipientId of recipients) {
+          notifications.push({
+            title: 'Task status updated',
+            message: `"${task.title}" is now ${task.status.replace('_', ' ').toLowerCase()}.`,
+            type: 'TASK_STATUS_UPDATED',
+            userId: recipientId,
+          });
+        }
       }
       if (notifications.length > 0) {
         await transaction.notification.createMany({ data: notifications });
       }
 
-      return task;
+      return {
+        task,
+        notifiedUserIds: Array.from(
+          new Set(notifications.map((notification) => notification.userId)),
+        ),
+      };
     });
+    for (const recipientId of result.notifiedUserIds) {
+      this.notificationsGateway.emitNewNotification(recipientId);
+    }
+    return result.task;
   }
 
   async remove(id: string, userId: string): Promise<void> {

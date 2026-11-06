@@ -199,7 +199,6 @@ describe('Tasks, comments, and activity (e2e)', () => {
       .send({ status: 'IN_PROGRESS' })
       .expect(200);
     expect(updated.body.status).toBe('IN_PROGRESS');
-
     const dashboard = await request(app.getHttpServer())
       .get('/dashboard/summary')
       .set('Authorization', `Bearer ${tokens.member}`)
@@ -226,12 +225,12 @@ describe('Tasks, comments, and activity (e2e)', () => {
     expect(comments.body[0].content).toBe('I am working on this checklist.');
     expect(comments.body[0].user).not.toHaveProperty('passwordHash');
 
-    const memberNotifications = await request(app.getHttpServer())
+    const ownerNotifications = await request(app.getHttpServer())
       .get('/notifications')
-      .set('Authorization', authorization('member'))
+      .set('Authorization', authorization('owner'))
       .expect(200);
     expect(
-      memberNotifications.body.data.map(
+      ownerNotifications.body.data.map(
         (notification: { type: string }) => notification.type,
       ),
     ).toEqual(

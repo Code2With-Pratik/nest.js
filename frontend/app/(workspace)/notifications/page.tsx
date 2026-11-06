@@ -6,6 +6,8 @@ import {
   CheckCheck,
   FolderPlus,
   MessageSquareText,
+  Clock3,
+  TriangleAlert,
   UserRoundPlus,
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -24,6 +26,8 @@ const icons: Record<NotificationType, typeof Bell> = {
   TASK_STATUS_UPDATED: Check,
   COMMENT_ADDED: MessageSquareText,
   PROJECT_INVITATION: FolderPlus,
+  TASK_DUE_SOON: Clock3,
+  TASK_OVERDUE: TriangleAlert,
 };
 
 export default function NotificationsPage() {
