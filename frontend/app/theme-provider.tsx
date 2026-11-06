@@ -6,7 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
 } from "react";
 
 type Theme = "light" | "dark";
@@ -18,27 +18,40 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
+function getThemeSnapshot(): Theme {
+  const savedTheme = window.localStorage.getItem("taskflow-theme");
+  if (savedTheme === "light" || savedTheme === "dark") {
+    return savedTheme;
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+function subscribeToTheme(onChange: () => void): () => void {
+  window.addEventListener("storage", onChange);
+  window.addEventListener("taskflow-theme-change", onChange);
+  return () => {
+    window.removeEventListener("storage", onChange);
+    window.removeEventListener("taskflow-theme-change", onChange);
+  };
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("light");
-
-  useEffect(() => {
-    const savedTheme = window.localStorage.getItem("taskflow-theme");
-    const initialTheme =
-      savedTheme === "light" || savedTheme === "dark"
-        ? savedTheme
-        : window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
-    setTheme(initialTheme);
-  }, []);
-
+  const theme = useSyncExternalStore(
+    subscribeToTheme,
+    getThemeSnapshot,
+    () => "light",
+  );
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    window.localStorage.setItem("taskflow-theme", theme);
   }, [theme]);
 
   const toggleTheme = useCallback(() => {
-    setTheme((current) => (current === "light" ? "dark" : "light"));
+    const nextTheme = getThemeSnapshot() === "light" ? "dark" : "light";
+    window.localStorage.setItem("taskflow-theme", nextTheme);
+    document.documentElement.dataset.theme = nextTheme;
+    window.dispatchEvent(new Event("taskflow-theme-change"));
   }, []);
   const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme]);
 

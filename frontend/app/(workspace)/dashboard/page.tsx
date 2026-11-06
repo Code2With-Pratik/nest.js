@@ -14,7 +14,6 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { ActivityRow } from "@/components/activity-row";
 import { ErrorState, LoadingState } from "@/components/query-state";
-import { TaskRow } from "@/components/task-row";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";

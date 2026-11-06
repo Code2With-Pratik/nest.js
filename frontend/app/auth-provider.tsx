@@ -52,8 +52,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void retrySession();
-  }, [retrySession]);
+    let active = true;
+    refreshSession()
+      .then((session) => {
+        if (active) setUser(session?.user ?? null);
+      })
+      .catch((error: unknown) => {
+        setAccessToken(null);
+        if (active) setBootstrapError(getErrorMessage(error));
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const signIn = useCallback(async (credentials: Credentials) => {
     const session = await apiFetch<AuthSession>("/auth/login", {

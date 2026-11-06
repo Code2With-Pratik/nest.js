@@ -41,7 +41,6 @@ type EditProjectValues = z.infer<typeof editProjectSchema>;
 
 export default function ProjectDetailsPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [editing, setEditing] = useState(false);
